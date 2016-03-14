@@ -18,6 +18,11 @@ interface IAttachRequestArgs extends DebugProtocol.AttachRequestArguments {
     port: number;
     sourceMaps?: boolean;
     diagnosticLogging?: boolean;
+    url?: string;
+    attachType: string;
+    deviceName?: string;
+    proxyExecutable?: string;
+    proxyArgs?: string[];
 }
 
 interface ISetBreakpointsArgs extends DebugProtocol.SetBreakpointsArguments {

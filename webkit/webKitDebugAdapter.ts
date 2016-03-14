@@ -36,6 +36,7 @@ export class WebKitDebugAdapter implements IDebugAdapter {
     private _setBreakpointsRequestQ: Promise<any>;
 
     private _chromeProc: ChildProcess;
+    private _proxyProc: ChildProcess;
     private _webKitConnection: WebKitConnection;
     private _eventHandler: (event: DebugProtocol.Event) => void;
 
@@ -124,10 +125,59 @@ export class WebKitDebugAdapter implements IDebugAdapter {
         if (args.port == null) {
             return utils.errP('The "port" field is required in the attach config.');
         }
+        if (!args.attachType || (args.attachType != "app" && args.attachType != "device")) {
+            return utils.errP('The "attachType" field is required as either "app" or "device" in the attach config.');
+        }
 
         this.initDiagnosticLogging('attach', args);
 
-        return this._attach(args.port);
+        let optionalDeviceName: string = null;
+
+        if (args.attachType == "device") {
+            // Check exists?
+            const proxyPath = args.proxyExecutable || utils.getProxyPath();
+            if (!proxyPath) {
+                if (utils.getPlatform() != utils.Platform.Windows) {
+                    return utils.errP(`Attaching to a device is not yet supported on this platform`);
+                } else {
+                    return utils.errP(`Can't find device proxy - npm install vs-libimobile`);
+                }
+            }
+
+            // Grab the specified device name, or default to * (which means first)
+            optionalDeviceName = args.deviceName || "*";
+
+            // Start with remote debugging enabled
+            const port = args.port || 9222;
+            const proxyArgs: string[] = [];
+
+            // Use default parameters for the ios_webkit_debug_proxy executable
+            if (!args.proxyExecutable) {
+                proxyArgs.push('--no-frontend');
+
+                // Set the ports available for devices
+                proxyArgs.push('--config=null:' + port + ',:' + (port + 1) + '-' + (port + 101));
+            }
+
+            if (args.proxyArgs) {
+                // Add additional parameters
+                proxyArgs.push(...args.proxyArgs);
+            }
+
+            Logger.log(`spawn('${proxyPath}', ${JSON.stringify(proxyArgs) })`);
+            this._proxyProc = spawn(proxyPath, proxyArgs, {
+                detached: true,
+                stdio: ['ignore']
+            });
+            (<any>this._proxyProc).unref();
+            this._proxyProc.on('error', (err) => {
+                Logger.log('device proxy error: ' + err);
+                Logger.log('Do you have the iTunes drivers installed?');
+                this.terminateSession();
+            });
+        }
+
+        return this._attach(args.port, args.url, optionalDeviceName);
     }
 
     private initDiagnosticLogging(name: string, args: IAttachRequestArgs | ILaunchRequestArgs): void {
@@ -138,7 +188,7 @@ export class WebKitDebugAdapter implements IDebugAdapter {
         }
     }
 
-    private _attach(port: number, url?: string): Promise<void> {
+    private _attach(port: number, url?: string, deviceName?: string): Promise<void> {
         // ODP client is attaching - if not attached to the webkit target, create a connection and attach
         this._clientAttached = true;
         if (!this._webKitConnection) {
@@ -155,7 +205,7 @@ export class WebKitDebugAdapter implements IDebugAdapter {
             this._webKitConnection.on('close', () => this.terminateSession());
             this._webKitConnection.on('error', () => this.terminateSession());
 
-            return this._webKitConnection.attach(port, url)
+            return this._webKitConnection.attach(port, url, deviceName)
                 .then(
                 () => this.fireEvent(new InitializedEvent()),
                 e => {
@@ -188,6 +238,7 @@ export class WebKitDebugAdapter implements IDebugAdapter {
         this.clearClientContext();
         this.clearTargetContext();
         this._chromeProc = null;
+        this._proxyProc = null;
 
         if (this._webKitConnection) {
             this._webKitConnection.close();
@@ -232,7 +283,7 @@ export class WebKitDebugAdapter implements IDebugAdapter {
                 this._currentStack[0].scopeChain.unshift({ type: 'Exception', object: scopeObject });
             }
         } else {
-            reason = notification.hitBreakpoints.length ? 'breakpoint' : 'step';
+            reason = notification.hitBreakpoints && notification.hitBreakpoints.length ? 'breakpoint' : 'step';
         }
 
         this.fireEvent(new StoppedEvent(reason, /*threadId=*/WebKitDebugAdapter.THREAD_ID, exceptionText));
@@ -284,6 +335,11 @@ export class WebKitDebugAdapter implements IDebugAdapter {
         if (this._chromeProc) {
             this._chromeProc.kill('SIGINT');
             this._chromeProc = null;
+        }
+
+        if (this._proxyProc) {
+            this._proxyProc.kill('SIGINT');
+            this._proxyProc = null;
         }
 
         this.clearEverything();

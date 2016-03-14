@@ -19,6 +19,9 @@
     "source-map": "^0.5.3",
     "ws": "0.8.0"
   },
+  "optionalDependencies": {
+    "vs-libimobile" : "^0.0.3"
+  },
   "devDependencies": {
     "gulp": "^3.9.0",
     "gulp-mocha": "^2.1.3",
@@ -65,10 +68,19 @@
             "webRoot": "wwwroot"
           },
           {
-            "name": "Attach",
+            "name": "Attach to an application (Chrome)",
             "type": "chrome",
             "request": "attach",
-            "port": 9222
+            "port": 9222,
+            "attachType":"app"
+          },
+          {
+            "name": "Attach to an ios device",
+            "type": "chrome",
+            "request": "attach",
+            "port": 9222,
+            "attachType":"device",
+            "deviceName":"*"
           }
         ],
         "configurationAttributes": {
@@ -130,7 +142,8 @@
           },
           "attach": {
             "required": [
-              "port"
+              "port",
+              "attachType"
             ],
             "properties": {
               "port": {
@@ -157,6 +170,37 @@
                 "type": "string",
                 "description": "When the 'url' field is specified, this specifies the workspace absolute path to the webserver root.",
                 "default": "${workspaceRoot}"
+              },
+              "url": {
+                "type": "string",
+                "description": "A url to find in the attached browser",
+                "default": "http://mysite.com/index.html"
+              },
+              "attachType": {
+                  "type": "string",
+                  "description": "The type of attach to perform ('app' - such as Chrome or 'device' - such as an attached ios device)",
+                  "default": "app"
+              },
+              "deviceName": {
+                  "type": "string",
+                  "description": "The name of the device to attach to (can be found at the proxy json endpoint) or '*' for any",
+                  "default": "*"
+              },
+              "proxyExecutable": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Workspace absolute path to the proxy executable to be used when attaching to a 'device'. If not specified, ios_webkit_debug_proxy.exe will be used from the default install location.",
+                "default": null
+              },
+              "proxyArgs": {
+                "type": "array",
+                "description": "Optional arguments passed to the proxy executable.",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
               }
             }
           }

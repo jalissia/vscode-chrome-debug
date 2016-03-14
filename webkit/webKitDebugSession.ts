@@ -33,6 +33,7 @@ export class WebKitDebugSession extends DebugSession {
             ],
             new WebKitDebugAdapter(),
             event => this.sendEvent(event));
+
     }
 
     /**

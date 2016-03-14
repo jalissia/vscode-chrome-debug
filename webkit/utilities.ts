@@ -32,6 +32,17 @@ export function getBrowserPath(): string {
     }
 }
 
+export function getProxyPath(): string {
+    const platform = getPlatform();
+    if (platform === Platform.Windows) {
+        var proxy = path.resolve(__dirname, "../../node_modules/vs-libimobile/lib/ios_webkit_debug_proxy.exe");
+        if (existsSync(proxy)) {
+            return proxy;
+        }
+    }
+    return null;
+}
+
 export const enum Platform {
     Windows, OSX, Linux
 }

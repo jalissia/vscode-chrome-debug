@@ -119,22 +119,71 @@ export class WebKitConnection {
     /**
      * Attach the websocket to the first available tab in the chrome instance with the given remote debugging port number.
      */
-    public attach(port: number, url?: string): Promise<void> {
+    public attach(port: number, url?: string, deviceName?: string): Promise<void> {
         Logger.log('Attempting to attach on port ' + port);
-        return utils.retryAsync(() => this._attach(port, url), 6000)
+        return utils.retryAsync(() => this._attach(port, url, deviceName), 6000)
             .then(() => this.sendMessage('Debugger.enable'))
             .then(() => this.sendMessage('Console.enable'))
             .then(() => { });
     }
 
-    public _attach(port: number, url?: string): Promise<void> {
-        return utils.getURL(`http://127.0.0.1:${port}/json`).then(jsonResponse => {
+    public _attach(port: number, url?: string, deviceName?: string): Promise<void> {
+        let connectToEndpoint: Promise<string>;
+        if (!deviceName) {
+            // Attach to a local chrome instance
+            connectToEndpoint = utils.getURL(`http://127.0.0.1:${port}/json`);
+        } else {
+            // Attach to a device over the proxy
+            connectToEndpoint = utils.getURL(`http://localhost:${port}/json`).then(jsonResponse => {
+                try {
+                    const responseArray = JSON.parse(jsonResponse);
+                    if (Array.isArray(responseArray)) {
+                        let devices = responseArray.filter(deviceInfo => deviceInfo && deviceInfo.url && deviceInfo.deviceName);
+
+                        // If a device name was specified find the matching one
+                        if (deviceName !== "*") {
+                            const matchingDevices = devices.filter(deviceInfo => deviceInfo.deviceName && deviceInfo.deviceName.toLowerCase() === deviceName.toLowerCase());
+                            if (!matchingDevices.length) {
+                                Logger.log(`Warning: Can't find a device with deviceName: ${deviceName}. Available devices: ${JSON.stringify(devices.map(d => d.deviceName))}`, true);
+                            } else {
+                                devices = matchingDevices;
+                            }
+                        }
+
+                        if (devices.length) {
+                            if (devices.length > 1 && deviceName !== "*") {
+                                Logger.log(`Warning: Found more than one valid target device. Attaching to the first one. Available devices: ${JSON.stringify(devices.map(d => d.deviceName))}`, true);
+                            }
+
+                            // Get the port for the actual device endpoint
+                            const deviceUrl: string = devices[0].url;
+                            if (deviceUrl) {
+                                const portIndex = deviceUrl.indexOf(':');
+                                if (portIndex > -1) {
+                                    port = parseInt(deviceUrl.substr(portIndex), 10);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (e) {
+                    // JSON.parse can throw
+                }
+
+                return utils.getURL(`http://127.0.0.1:${port}/json`);
+            },
+            e => {
+                return utils.errP('Cannot connect to the proxy: ' + e.message);
+            });
+        }
+
+        return connectToEndpoint.then(jsonResponse => {
             // Validate every step of processing the response
             try {
                 const responseArray = JSON.parse(jsonResponse);
                 if (Array.isArray(responseArray)) {
                     // Filter out extension targets and other things
-                    let pages = responseArray.filter(target => target && target.type === 'page');
+                    let pages = responseArray.filter(target => target && target.webSocketDebuggerUrl);
 
                     // If a url was specified (launch mode), try to filter to that url
                     if (url) {

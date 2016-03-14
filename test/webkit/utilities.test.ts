@@ -90,6 +90,50 @@ suite('Utilities', () => {
         });
     });
 
+    suite('getProxyPath()', () => {
+        test('osx', () => {
+            mockery.registerMock('os', { platform: () => 'darwin' });
+            const Utilities = getUtilities();
+            assert.equal(Utilities.getPlatform(), Utilities.Platform.OSX);
+            assert.equal(
+                Utilities.getProxyPath(),
+                null);
+        });
+
+        test('win', () => {
+            // Overwrite the statSync mock to say the x86 path doesn't exist
+            const statSync = (aPath: string) => {
+                if (aPath.indexOf('(x86)') >= 0) throw new Error('Not found');
+            };
+            mockery.registerMock('fs', { statSync });
+            mockery.registerMock('os', { platform: () => 'win32' });
+
+            const Utilities = getUtilities();
+            assert.equal(Utilities.getPlatform(), Utilities.Platform.Windows);
+            assert.equal(
+                Utilities.getProxyPath().indexOf('ios_webkit_debug_proxy.exe') > -1,
+                true);
+        });
+
+        test('linux', () => {
+            mockery.registerMock('os', { platform: () => 'linux' });
+            const Utilities = getUtilities();
+            assert.equal(Utilities.getPlatform(), Utilities.Platform.Linux);
+            assert.equal(
+                Utilities.getProxyPath(),
+                null);
+        });
+
+        test('freebsd (default to Linux for anything unknown)', () => {
+            mockery.registerMock('os', { platform: () => 'freebsd' });
+            const Utilities = getUtilities();
+            assert.equal(Utilities.getPlatform(), Utilities.Platform.Linux);
+            assert.equal(
+                Utilities.getProxyPath(),
+                null);
+        });
+    });
+
     suite('existsSync()', () => {
         test('it returns false when statSync throws', () => {
             const statSync = (aPath: string) => {

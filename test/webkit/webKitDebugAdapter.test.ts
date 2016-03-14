@@ -289,7 +289,7 @@ suite('WebKitDebugAdapter', () => {
 });
 
 function attach(wkda: _WebKitDebugAdapter): Promise<void> {
-    return wkda.attach({ port: 9222, cwd: 'c:/' });
+    return wkda.attach({ port: 9222, cwd: 'c:/', attachType: 'app' });
 }
 
 class DefaultMockWebKitConnection {
