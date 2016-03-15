@@ -160,7 +160,7 @@ export class WebKitConnection {
                             if (deviceUrl) {
                                 const portIndex = deviceUrl.indexOf(':');
                                 if (portIndex > -1) {
-                                    port = parseInt(deviceUrl.substr(portIndex), 10);
+                                    port = parseInt(deviceUrl.substr(portIndex + 1), 10);
                                 }
                             }
                         }
