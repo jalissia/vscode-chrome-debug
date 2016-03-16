@@ -138,9 +138,9 @@ export class WebKitDebugAdapter implements IDebugAdapter {
             const proxyPath = args.proxyExecutable || utils.getProxyPath();
             if (!proxyPath) {
                 if (utils.getPlatform() != utils.Platform.Windows) {
-                    return utils.errP(`Attaching to a device is not yet supported on this platform`);
+                    return utils.errP(`No ios proxy was found. Install an ios proxy (https://github.com/google/ios-webkit-debug-proxy) and specify a valid 'proxyExecutable' path`);
                 } else {
-                    return utils.errP(`Can't find device proxy - npm install vs-libimobile`);
+                    return utils.errP(`No ios proxy was found. Run 'npm install -g vs-libimobile' and specify a valid 'proxyExecutable' path`);
                 }
             }
 
