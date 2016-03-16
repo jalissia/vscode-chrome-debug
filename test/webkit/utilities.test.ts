@@ -386,6 +386,10 @@ suite('Utilities', () => {
         test('uses cwd when webRoot is missing', () => {
             assert.equal(getUtilities().getWebRoot({ webRoot: '', cwd: 'c:\\project\\cwd' }), 'c:\\project\\cwd');
         });
+
+        test('uses webRoot when cwd is missing', () => {
+            assert.equal(getUtilities().getWebRoot({ webRoot: 'c:\\project\\webRoot', cwd: undefined }), 'c:\\project\\webRoot');
+        });
     });
 
     suite('getUrl', () => {

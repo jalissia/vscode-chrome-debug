@@ -71,15 +71,16 @@
             "name": "Attach to an application (Chrome)",
             "type": "chrome",
             "request": "attach",
-            "port": 9222,
-            "attachType":"app"
+            "attachType":"app",
+            "port": 9222
           },
           {
             "name": "Attach to an ios device",
             "type": "chrome",
             "request": "attach",
-            "port": 9222,
             "attachType":"device",
+            "port": 9222,
+            "webRoot":"${workspaceRoot}",
             "deviceName":"*"
           }
         ],
@@ -168,7 +169,7 @@
               },
               "webRoot": {
                 "type": "string",
-                "description": "When the 'url' field is specified, this specifies the workspace absolute path to the webserver root.",
+                "description": "This specifies the workspace absolute path to the webserver root.",
                 "default": "${workspaceRoot}"
               },
               "url": {

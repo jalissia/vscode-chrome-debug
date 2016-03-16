@@ -370,7 +370,7 @@ export function getWebRoot(args: ILaunchRequestArgs | IAttachRequestArgs): strin
     let webRoot: string;
     if (args.webRoot) {
         webRoot = args.webRoot;
-        if (!path.isAbsolute(webRoot)) {
+        if (!path.isAbsolute(webRoot) && args.cwd) {
             webRoot = path.resolve(args.cwd, webRoot);
         }
     } else {
